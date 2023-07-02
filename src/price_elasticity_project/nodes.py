@@ -2,73 +2,62 @@
 This is a boilerplate pipeline
 generated using Kedro 0.18.6
 """
-
-import logging
-from typing import Any, Dict, Tuple
-
-import numpy as np
 import pandas as pd
+import streamlit as st
+import matplotlib.pyplot as plt
 
 
-def split_data(
-    data: pd.DataFrame, parameters: Dict[str, Any]
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """Splits data into features and target training and test sets.
-
-    Args:
-        data: Data containing features and target.
-        parameters: Parameters defined in parameters.yml.
-    Returns:
-        Split data.
-    """
-
-    data_train = data.sample(
-        frac=parameters["train_fraction"], random_state=parameters["random_state"]
-    )
-    data_test = data.drop(data_train.index)
-
-    X_train = data_train.drop(columns=parameters["target_column"])
-    X_test = data_test.drop(columns=parameters["target_column"])
-    y_train = data_train[parameters["target_column"]]
-    y_test = data_test[parameters["target_column"]]
-
-    return X_train, X_test, y_train, y_test
+def load_data():
+    df_elasticity = pd.read_excel('../../data/04_feature/elasticity.xlsx')
+    df_bp = pd.read_excel('../../data/04_feature/resultado.xlsx')
+    df_c = pd.read_excel('../../data/04_feature/result.xlsx')
+    return df_elasticity, df_bp, df_c
 
 
-def make_predictions(
-    X_train: pd.DataFrame, X_test: pd.DataFrame, y_train: pd.Series
-) -> pd.Series:
-    """Uses 1-nearest neighbour classifier to create predictions.
+def plot_elasticity(df_elasticity):
+    st.header('Price Elasticity - Graphs')
+    df_elasticity['ranking'] = df_elasticity.loc[:, 'price_elasticity'].rank(ascending=False).astype(int)
+    df_elasticity = df_elasticity.reset_index(drop=True)
 
-    Args:
-        X_train: Training data of features.
-        y_train: Training data for target.
-        X_test: Test data for features.
+    fig, ax = plt.subplots()
+    ax.hlines(y=df_elasticity['ranking'], xmin=0, xmax=df_elasticity['price_elasticity'], alpha=0.5, linewidth=3)
 
-    Returns:
-        y_pred: Prediction of the target variable.
-    """
+    for name, p in zip(df_elasticity['name'], df_elasticity['ranking']):
+        ax.text(4, p, name)
 
-    X_train_numpy = X_train.to_numpy()
-    X_test_numpy = X_test.to_numpy()
+    for x, y, s in zip(df_elasticity['price_elasticity'], df_elasticity['ranking'], df_elasticity['price_elasticity']):
+        ax.text(x, y, round(s, 2), horizontalalignment='right' if x < 0 else 'left', 
+    verticalalignment='center', fontdict={'color': 'red' if x < 0 else 'green', 'size':10})
+        
+    ax.grid(linestyle='--')
 
-    squared_distances = np.sum(
-        (X_train_numpy[:, None, :] - X_test_numpy[None, :, :]) ** 2, axis=-1
-    )
-    nearest_neighbour = squared_distances.argmin(axis=0)
-    y_pred = y_train.iloc[nearest_neighbour]
-    y_pred.index = X_test.index
-
-    return y_pred
+    st.pyplot(fig)
 
 
-def report_accuracy(y_pred: pd.Series, y_test: pd.Series):
-    """Calculates and logs the accuracy.
+def run_streamlit():
+    st.set_page_config(layout='wide')
+    st.header('Price Elasticity Project')
+    
+    tab1, tab2, tab3 = st.tabs(['Price Elasticity', 'Business Performance', 'Cross Price Elasticity'])
+    df_elasticity, df_bp, df_c = load_data()
+    
+    with tab1:
+        tab4, tab5 = st.tabs(['Price Elasticity - Graphs', 'Price Elasticity - Dataframe'])
+        with tab4:
+            plot_elasticity(df_elasticity)
+        with tab5:
+            st.header('Price Elasticity - Dataframe')
+            df_order_elasticity = df_elasticity[['ranking', 'name', 'price_elasticity']].sort_values(by='price_elasticity', ascending=True).set_index('ranking')
+            st.dataframe(df_order_elasticity, use_container_width=True)
 
-    Args:
-        y_pred: Predicted target.
-        y_test: True target.
-    """
-    accuracy = (y_pred == y_test).sum() / len(y_test)
-    logger = logging.getLogger(__name__)
-    logger.info("Model has accuracy of %.3f on test data.", accuracy)
+    with tab2:
+        st.header('Business Performance')
+        df_bp = df_bp.set_index('name')
+        st.dataframe(df_bp, use_container_width=True)
+    with tab3:
+        st.header('Cross Price Elasticity')
+        df_c = df_c.set_index('name')
+        st.dataframe(df_c, use_container_width=True)
+
+if __name__ == "__main__":
+    run_streamlit()
