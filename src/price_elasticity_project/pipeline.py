@@ -13,7 +13,11 @@ def create_pipeline(**kwargs) -> Pipeline:
         [
             node(
                 func=run_streamlit,
-                inputs=["price_elasticity", "business_performance", "cross_price_elasticity"],
+                inputs=[
+                    "price_elasticity",
+                    "business_performance",
+                    "cross_price_elasticity",
+                ],
                 outputs=None,
                 name="run_streamlit",
             ),
