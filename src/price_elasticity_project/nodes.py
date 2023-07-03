@@ -2,6 +2,8 @@
 This is a boilerplate pipeline
 generated using Kedro 0.18.6
 """
+from typing import Tuple, Union
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -11,12 +13,12 @@ from price_elasticity import make_price_elasticity
 st.set_page_config(layout="wide")
 
 
-def _load_data():
+def _load_data() -> pd.DataFrame:
     df_raw = pd.read_csv("../../data/01_raw/df_ready.csv")
     return df_raw
 
 
-def _drop_columns(df_raw):
+def _drop_columns(df_raw: pd.DataFrame) -> pd.DataFrame:
     columns_to_drop = [
         "Unnamed: 0",
         "Cluster",
@@ -58,12 +60,12 @@ def _drop_columns(df_raw):
     return df_raw
 
 
-def _change_dtypes(df1):
+def _change_dtypes(df1: pd.DataFrame) -> pd.DataFrame:
     df1["date_imp_d"] = pd.to_datetime(df1["date_imp_d"])
     return df1
 
 
-def _prepare_data(df2):
+def _prepare_data(df2: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     df_best = df2.loc[
         (df2["category_name"] == "laptop, computer")
         & (df2["merchant"] == "Bestbuy.com")
@@ -84,8 +86,25 @@ def _prepare_data(df2):
     return x_price, y_demand
 
 
-def _calculate_price_elasticity(x_price, y_demand):
-    results_values_laptop = {
+def _calculate_price_elasticity(
+    x_price: pd.DataFrame, y_demand: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Calculate price elasticity for each product.
+
+    Parameters
+    ----------
+    x_price : pd.DataFrame
+        The DataFrame of product prices.
+    y_demand : pd.DataFrame
+        The DataFrame of product demands.
+
+    Returns
+    -------
+    pd.DataFrame
+        The DataFrame with price elasticity results for each product.
+    """
+    price_elasticity_laptop = {
         "name": [],
         "price_elastity": [],
         "price_mean": [],
@@ -115,67 +134,109 @@ def _calculate_price_elasticity(x_price, y_demand):
         if results.f_pvalue < 0.05:
             intercept, slope = results.params
 
-            results_values_laptop["name"].append(column)
-            results_values_laptop["price_elastity"].append(
+            price_elasticity_laptop["name"].append(column)
+            price_elasticity_laptop["price_elastity"].append(
                 slope * (np.mean(list_price) / np.mean(list_demand))
             )
-            results_values_laptop["rsquared"].append(results.rsquared)
-            results_values_laptop["p_value"].append(results.f_pvalue)
-            results_values_laptop["intercept"].append(intercept)
-            results_values_laptop["slope"].append(slope)
-            results_values_laptop["price_mean"].append(np.round(np.mean(list_price), 2))
-            results_values_laptop["quantity_mean"].append(
+            price_elasticity_laptop["rsquared"].append(results.rsquared)
+            price_elasticity_laptop["p_value"].append(results.f_pvalue)
+            price_elasticity_laptop["intercept"].append(intercept)
+            price_elasticity_laptop["slope"].append(slope)
+            price_elasticity_laptop["price_mean"].append(
+                np.round(np.mean(list_price), 2)
+            )
+            price_elasticity_laptop["quantity_mean"].append(
                 np.round(np.mean(list_demand), 2)
             )
 
-    return pd.DataFrame(results_values_laptop)
+    return pd.DataFrame(price_elasticity_laptop)
 
 
-def simulate_elasticity(percentual, y_demand, df_elasticity, option):
+def simulate_elasticity(
+    percentual: float, y_demand: pd.DataFrame, df_elasticity: pd.DataFrame, option: str
+) -> Union[pd.DataFrame, None]:
+    """
+    Simulate price elasticity with a given percentage change.
+
+    Parameters
+    ----------
+    percentual : float
+        The percentage of price change.
+    y_demand : pd.DataFrame
+        The DataFrame of product demands.
+    df_elasticity : pd.DataFrame
+        The DataFrame of price elasticity.
+    option : str
+        The option of price change, can be either "Desconto" or "Aumento de Preço".
+
+    Returns
+    -------
+    Union[pd.DataFrame, None]
+        The DataFrame of simulated results. Returns None if the percentual is 0.
+    """
     if percentual == 0:
-        return None
+        simulate_result = None
+    else:
+        result_revenue = {
+            "name": [],
+            "faturamento_atual": [],
+            "faturamento_novo": [],
+            "variacao_faturamento": [],
+            "variacao_percentual": [],
+        }
 
-    result_revenue = {
-        "name": [],
-        "faturamento_atual": [],
-        "faturamento_novo": [],
-        "variacao_faturamento": [],
-        "variacao_percentual": [],
-    }
+        if option == "Desconto":
+            percentual = -percentual
 
-    if option == "Desconto":
-        percentual = -percentual
+        for i in range(len(df_elasticity)):
+            current_price_mean = df_elasticity["price_mean"][i]
+            current_demand = y_demand[df_elasticity["name"][i]].sum()
 
-    for i in range(len(df_elasticity)):
-        current_price_mean = df_elasticity["price_mean"][i]
-        current_demand = y_demand[df_elasticity["name"][i]].sum()
+            if percentual < 0:
+                price_change = current_price_mean * (1 - ((percentual * (-1)) / 100))
+            else:
+                price_change = (current_price_mean * percentual) + current_price_mean
 
-        if percentual < 0:
-            price_change = current_price_mean * (1 - ((percentual * (-1)) / 100))
-        else:
-            price_change = (current_price_mean * percentual) + current_price_mean
+            demand_increase = (percentual / 100) * df_elasticity["price_elastity"][i]
+            new_demand = demand_increase * current_demand
 
-        demand_increase = (percentual / 100) * df_elasticity["price_elastity"][i]
-        new_demand = demand_increase * current_demand
+            current_revenue = round(current_price_mean * current_demand, 2)
+            new_revenue = round(price_change * new_demand, 2)
 
-        current_revenue = round(current_price_mean * current_demand, 2)
-        new_revenue = round(price_change * new_demand, 2)
+            revenue_variation = round(new_revenue - current_revenue, 2)
+            percentage_variation = round(
+                (new_revenue - current_revenue) / current_revenue, 2
+            )
 
-        revenue_variation = round(new_revenue - current_revenue, 2)
-        percentage_variation = round(
-            (new_revenue - current_revenue) / current_revenue, 2
-        )
+            result_revenue["name"].append(df_elasticity["name"][i])
+            result_revenue["faturamento_atual"].append(current_revenue)
+            result_revenue["faturamento_novo"].append(new_revenue)
+            result_revenue["variacao_faturamento"].append(revenue_variation)
+            result_revenue["variacao_percentual"].append(percentage_variation)
 
-        result_revenue["name"].append(df_elasticity["name"][i])
-        result_revenue["faturamento_atual"].append(current_revenue)
-        result_revenue["faturamento_novo"].append(new_revenue)
-        result_revenue["variacao_faturamento"].append(revenue_variation)
-        result_revenue["variacao_percentual"].append(percentage_variation)
+        simulate_result = pd.DataFrame(result_revenue)
 
-    return pd.DataFrame(result_revenue)
+    return simulate_result
 
 
-def gerar_relatorio_simulacao(final, op, number):
+def make_simulation_report(final: pd.DataFrame, op: str, number: int) -> str:
+    """
+    Generate a simulation report.
+
+    Parameters
+    ----------
+    final : pd.DataFrame
+        The DataFrame of simulation results.
+    op : str
+        The option of price change.
+    number : int
+        The percentage of price change.
+
+    Returns
+    -------
+    str
+        The simulation report.
+    """
     intro_relatorio = (
         "### **Nosso modelo de Inteligência Artificial gerou um "
         "relatório personalizado simulando os efeitos que essa alteração "
@@ -227,7 +288,7 @@ def gerar_relatorio_simulacao(final, op, number):
     return relatorio_final
 
 
-def _prepare_data_and_calculate_elasticity():
+def prepare_data_and_calculate_elasticity() -> Tuple[pd.DataFrame, pd.DataFrame]:
     df_raw = _load_data()
     df1 = _drop_columns(df_raw)
 
@@ -240,7 +301,17 @@ def _prepare_data_and_calculate_elasticity():
     return df_elasticity, y_demand
 
 
-def run_simulation_tab(df_elasticity, y_demand):
+def run_simulation_tab(df_elasticity: pd.DataFrame, y_demand: pd.DataFrame) -> None:
+    """
+    Run simulation and display results on Streamlit.
+
+    Parameters
+    ----------
+    df_elasticity : pd.DataFrame
+        The DataFrame of price elasticity.
+    y_demand : pd.DataFrame
+        The DataFrame of product demands.
+    """
     col1, col2 = st.columns((1, 1))
     with col1:
         st.markdown(
@@ -277,14 +348,14 @@ def run_simulation_tab(df_elasticity, y_demand):
         ]
         st.dataframe(final2, use_container_width=True)
 
-        relatorio = gerar_relatorio_simulacao(final, op, number)
+        relatorio = make_simulation_report(final, op, number)
         st.markdown(relatorio)
 
 
 if __name__ == "__main__":
     st.header("Price Elasticity Project")
 
-    df_elasticity, y_demand = _prepare_data_and_calculate_elasticity()
+    df_elasticity, y_demand = prepare_data_and_calculate_elasticity()
 
     tab1, tab2 = st.tabs(["Elasticidade de Preço", "Simule Cenários"])
 

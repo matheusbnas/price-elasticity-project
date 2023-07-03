@@ -1,16 +1,26 @@
+from typing import Tuple
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
 
-def load_data():
+def _load_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df_elasticity = pd.read_excel("../../data/04_feature/elasticity.xlsx")
     df_bp = pd.read_excel("../../data/04_feature/resultado.xlsx")
     df_c = pd.read_excel("../../data/04_feature/result.xlsx")
     return df_elasticity, df_bp, df_c
 
 
-def plot_elasticity(df_elasticity):
+def _plot_elasticity(df_elasticity: pd.DataFrame) -> None:
+    """
+    Create a plot for price elasticity and display it using streamlit.
+
+    Parameters
+    ----------
+    df_elasticity : pandas.DataFrame
+        DataFrame containing price elasticity data.
+    """
     st.header("Price Elasticity - Graphs")
     df_elasticity["ranking"] = (
         df_elasticity.loc[:, "price_elasticity"].rank(ascending=False).astype(int)
@@ -48,18 +58,21 @@ def plot_elasticity(df_elasticity):
     st.pyplot(fig)
 
 
-def make_price_elasticity():
+def make_price_elasticity() -> None:
+    """
+    Creates streamlit tabs and loads data to be displayed.
+    """
     tab1, tab2, tab3 = st.tabs(
         ["Price Elasticity", "Business Performance", "Cross Price Elasticity"]
     )
-    df_elasticity, df_bp, df_c = load_data()
+    df_elasticity, df_bp, df_c = _load_data()
 
     with tab1:
         tab4, tab5 = st.tabs(
             ["Price Elasticity - Graphs", "Price Elasticity - Dataframe"]
         )
         with tab4:
-            plot_elasticity(df_elasticity)
+            _plot_elasticity(df_elasticity)
         with tab5:
             st.header("Price Elasticity - Dataframe")
             df_order_elasticity = (
