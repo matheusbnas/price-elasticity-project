@@ -220,54 +220,52 @@ def simulate_elasticity(
 
 
 def _generate_product_report(
-    final: pd.DataFrame, op: str, number: int, intro_relatorio: str
+    final: pd.DataFrame, op: str, number: int, report_intro: str
 ) -> str:
-    produtos = []
+    products = []
 
     for i in range(len(final)):
-        produto = final["name"][i]
-        faturamento_atual = final["faturamento_atual"][i]
-        faturamento_novo = final["faturamento_novo"][i]
-        acao = "Aumento" if op == "Aumento de Preço" else "Diminuição"
-        acao2 = "Aumento" if faturamento_novo > faturamento_atual else "Diminuição"
+        product = final["name"][i]
+        current_revenue = final["faturamento_atual"][i]
+        new_revenue = final["faturamento_novo"][i]
+        action = "Increase" if op == "Aumento de Preço" else "Decrease"
+        action2 = "Increase" if new_revenue > current_revenue else "Decrease"
 
-        produto_limitado = produto if len(produto) <= 50 else produto[:50]
+        limited_product = product if len(product) <= 50 else product[:50]
 
-        produtos.append(produto_limitado)
-        relatorio_produto = (
-            f"- {acao} {number}% no produto {produto_limitado}:"
-            f" {acao2} do faturamento em R${abs(faturamento_novo)}\n"
+        products.append(limited_product)
+        product_report = (
+            f"- {action} {number}% on product {limited_product}:"
+            f" {action2} of revenue in R${abs(new_revenue)}\n"
         )
-        intro_relatorio += relatorio_produto
-    total_produtos_analisados = len(produtos)
+        report_intro += product_report
+    total_products_analyzed = len(products)
 
-    return total_produtos_analisados, intro_relatorio
+    return total_products_analyzed, report_intro
 
 
 def _generate_general_report(
-    final: pd.DataFrame, total_produtos_analisados: int, number: int
+    final: pd.DataFrame, total_products_analyzed: int, number: int
 ) -> str:
-    soma_faturamento_novo = final["faturamento_novo"].sum()
-    soma_faturamento_atual = final["faturamento_atual"].sum()
-    variacao_faturamento = soma_faturamento_novo - soma_faturamento_atual
+    total_new_revenue = final["faturamento_novo"].sum()
+    total_current_revenue = final["faturamento_atual"].sum()
+    revenue_variation = total_new_revenue - total_current_revenue
 
-    impacto = "AUMENTA" if variacao_faturamento > 0 else "DIMINUI"
-    relatorio_geral = (
-        "\n## **Impacto no faturamento e na demanda no negócio como um todo:**\n"
+    impact = "INCREASES" if revenue_variation > 0 else "DECREASES"
+    general_report = "\n## **Impact on revenue and demand in business as a whole:**\n"
+    general_report += f"- Total of analyzed products: {total_products_analyzed}\n"
+    general_report += (
+        f"- With a discount of {number}% the revenue of your business "
+        f"{impact}, being able to make the potential revenue of "
+        f"your business can reach {round(total_new_revenue,2)}. "
+        f"This represents a value of {round(abs(revenue_variation),2)}"
+        f"{'more' if impact == 'INCREASES' else 'less'} than you "
+        f"currently invoice.\n"
     )
-    relatorio_geral += f"- Total de produtos analisados: {total_produtos_analisados}\n"
-    relatorio_geral += (
-        f"- Com um desconto de {number}% o faturamento do seu negócio "
-        f"{impacto}, podendo fazer com que o faturamento potencial do "
-        f"seu negócio possa atingir {round(soma_faturamento_novo,2)}. "
-        f"Isso representa um valor de {round(abs(variacao_faturamento),2)}"
-        f"{'a mais' if impacto == 'AUMENTA' else 'a menos'} do que você "
-        f"fatura atualmente.\n"
+    general_report += (
+        f"- Percentage variation in revenue: {final['variacao_percentual'].sum()}%\n"
     )
-    relatorio_geral += (
-        f"- Variação percentual no faturamento: {final['variacao_percentual'].sum()}%\n"
-    )
-    return relatorio_geral
+    return general_report
 
 
 def make_simulation_report(final: pd.DataFrame, op: str, number: int) -> str:
@@ -288,19 +286,19 @@ def make_simulation_report(final: pd.DataFrame, op: str, number: int) -> str:
     str
         The simulation report.
     """
-    intro_relatorio = (
-        "### **Nosso modelo de Inteligência Artificial gerou um "
-        "relatório personalizado simulando os efeitos que essa alteração "
-        "de preço pode causar na Demanda e Faturamento:**\n\n"
+    report_intro = (
+        "### **Our Artificial Intelligence model has generated a "
+        "custom report simulating the effects that this price change "
+        "can cause in Demand and Revenue:**\n\n"
     )
-    total_produtos_analisados, intro_relatorio = _generate_product_report(
-        final, op, number, intro_relatorio
+    total_products_analyzed, report_intro = _generate_product_report(
+        final, op, number, report_intro
     )
 
-    relatorio_geral = _generate_general_report(final, total_produtos_analisados, number)
+    general_report = _generate_general_report(final, total_products_analyzed, number)
 
-    relatorio_final = intro_relatorio + relatorio_geral
-    return relatorio_final
+    final_report = report_intro + general_report
+    return final_report
 
 
 def prepare_data_and_calculate_elasticity() -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -331,22 +329,22 @@ def run_simulation_tab(df_elasticity: pd.DataFrame, y_demand: pd.DataFrame) -> N
     with col1:
         st.markdown(
             (
-                "<h2 style='text-align: center;'>Você gostaria de aplicar um "
-                "desconto ou um aumento de preço nos produtos?</h2>"
+                "<h2 style='text-align: center;'>Would you like to apply a "
+                "discount or a price increase to the products?</h2>"
             ),
             unsafe_allow_html=True,
         )
-        option = st.selectbox("", ("Aumento de Preço", "Aplicar Desconto"))
-        if option == "Aumento de Preço":
-            op = "Aumento de Preço"
+        option = st.selectbox("", ("Price Increase", "Apply Discount"))
+        if option == "Price Increase":
+            op = "Price Increase"
         else:
-            op = "Desconto"
+            op = "Discount"
 
     with col2:
         st.markdown(
-            '<h2 style="text-align: center;">Qual o percentual de '
+            '<h2 style="text-align: center;">What percentage of '
             + op
-            + " que você deseja aplicar?</h2>",
+            + " would you like to apply?</h2>",
             unsafe_allow_html=True,
         )
         number = st.number_input("")
@@ -355,16 +353,16 @@ def run_simulation_tab(df_elasticity: pd.DataFrame, y_demand: pd.DataFrame) -> N
         final = simulate_elasticity(number, y_demand, df_elasticity, op)
         final2 = final.copy()
         final2.columns = [
-            "Produto",
-            "Faturamento Atual",
-            "Faturamento Previsto IA",
-            "Variação de Faturamento",
-            "Percentual de Variação",
+            "Product",
+            "Current Revenue",
+            "Predicted Revenue with AI",
+            "Revenue Variation",
+            "Percentage Variation",
         ]
         st.dataframe(final2, use_container_width=True)
 
-        relatorio = make_simulation_report(final, op, number)
-        st.markdown(relatorio)
+        report = make_simulation_report(final, op, number)
+        st.markdown(report)
 
 
 if __name__ == "__main__":
@@ -372,7 +370,7 @@ if __name__ == "__main__":
 
     df_elasticity, y_demand = prepare_data_and_calculate_elasticity()
 
-    tab1, tab2 = st.tabs(["Elasticidade de Preço", "Simule Cenários"])
+    tab1, tab2 = st.tabs(["Price Elasticity", "Simulate scenarios"])
 
     with tab1:
         make_price_elasticity()
