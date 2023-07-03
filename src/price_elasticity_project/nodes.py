@@ -219,6 +219,57 @@ def simulate_elasticity(
     return simulate_result
 
 
+def _generate_product_report(
+    final: pd.DataFrame, op: str, number: int, intro_relatorio: str
+) -> str:
+    produtos = []
+
+    for i in range(len(final)):
+        produto = final["name"][i]
+        faturamento_atual = final["faturamento_atual"][i]
+        faturamento_novo = final["faturamento_novo"][i]
+        acao = "Aumento" if op == "Aumento de Preço" else "Diminuição"
+        acao2 = "Aumento" if faturamento_novo > faturamento_atual else "Diminuição"
+
+        produto_limitado = produto if len(produto) <= 50 else produto[:50]
+
+        produtos.append(produto_limitado)
+        relatorio_produto = (
+            f"- {acao} {number}% no produto {produto_limitado}:"
+            f" {acao2} do faturamento em R${abs(faturamento_novo)}\n"
+        )
+        intro_relatorio += relatorio_produto
+    total_produtos_analisados = len(produtos)
+
+    return total_produtos_analisados, intro_relatorio
+
+
+def _generate_general_report(
+    final: pd.DataFrame, total_produtos_analisados: int, number: int
+) -> str:
+    soma_faturamento_novo = final["faturamento_novo"].sum()
+    soma_faturamento_atual = final["faturamento_atual"].sum()
+    variacao_faturamento = soma_faturamento_novo - soma_faturamento_atual
+
+    impacto = "AUMENTA" if variacao_faturamento > 0 else "DIMINUI"
+    relatorio_geral = (
+        "\n## **Impacto no faturamento e na demanda no negócio como um todo:**\n"
+    )
+    relatorio_geral += f"- Total de produtos analisados: {total_produtos_analisados}\n"
+    relatorio_geral += (
+        f"- Com um desconto de {number}% o faturamento do seu negócio "
+        f"{impacto}, podendo fazer com que o faturamento potencial do "
+        f"seu negócio possa atingir {round(soma_faturamento_novo,2)}. "
+        f"Isso representa um valor de {round(abs(variacao_faturamento),2)}"
+        f"{'a mais' if impacto == 'AUMENTA' else 'a menos'} do que você "
+        f"fatura atualmente.\n"
+    )
+    relatorio_geral += (
+        f"- Variação percentual no faturamento: {final['variacao_percentual'].sum()}%\n"
+    )
+    return relatorio_geral
+
+
 def make_simulation_report(final: pd.DataFrame, op: str, number: int) -> str:
     """
     Generate a simulation report.
@@ -242,47 +293,11 @@ def make_simulation_report(final: pd.DataFrame, op: str, number: int) -> str:
         "relatório personalizado simulando os efeitos que essa alteração "
         "de preço pode causar na Demanda e Faturamento:**\n\n"
     )
-    produtos = []
-
-    # Relatório por produto
-    for i in range(len(final)):
-        produto = final["name"][i]
-        faturamento_atual = final["faturamento_atual"][i]
-        faturamento_novo = final["faturamento_novo"][i]
-        acao = "Aumento" if op == "Aumento de Preço" else "Diminuição"
-        acao2 = "Aumento" if faturamento_novo > faturamento_atual else "Diminuição"
-
-        produto_limitado = produto if len(produto) <= 50 else produto[:50]
-
-        produtos.append(produto_limitado)
-        relatorio_produto = (
-            f"- {acao} {number}% no produto {produto_limitado}:"
-            f" {acao2} do faturamento em R${abs(faturamento_novo)}\n"
-        )
-        intro_relatorio += relatorio_produto
-
-    # Relatório geral
-    total_produtos_analisados = len(produtos)
-    soma_faturamento_novo = final["faturamento_novo"].sum()
-    soma_faturamento_atual = final["faturamento_atual"].sum()
-    variacao_faturamento = soma_faturamento_novo - soma_faturamento_atual
-
-    impacto = "AUMENTA" if variacao_faturamento > 0 else "DIMINUI"
-    relatorio_geral = (
-        "\n## **Impacto no faturamento e na demanda no negócio como um todo:**\n"
+    total_produtos_analisados, intro_relatorio = _generate_product_report(
+        final, op, number, intro_relatorio
     )
-    relatorio_geral += f"- Total de produtos analisados: {total_produtos_analisados}\n"
-    relatorio_geral += (
-        f"- Com um desconto de {number}% o faturamento do seu negócio "
-        f"{impacto}, podendo fazer com que o faturamento potencial do "
-        f"seu negócio possa atingir {round(soma_faturamento_novo,2)}. "
-        f"Isso representa um valor de {round(abs(variacao_faturamento),2)}"
-        f"{'a mais' if impacto == 'AUMENTA' else 'a menos'} do que você "
-        f"fatura atualmente.\n"
-    )
-    relatorio_geral += (
-        f"- Variação percentual no faturamento: {final['variacao_percentual'].sum()}%\n"
-    )
+
+    relatorio_geral = _generate_general_report(final, total_produtos_analisados, number)
 
     relatorio_final = intro_relatorio + relatorio_geral
     return relatorio_final
