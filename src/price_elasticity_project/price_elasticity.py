@@ -6,9 +6,9 @@ import streamlit as st
 
 
 def _load_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    df_elasticity = pd.read_excel("../../data/04_feature/elasticity.xlsx")
-    df_bp = pd.read_excel("../../data/04_feature/resultado.xlsx")
-    df_c = pd.read_excel("../../data/04_feature/result.xlsx")
+    df_elasticity = pd.read_excel("data/04_feature/elasticity.xlsx")
+    df_bp = pd.read_excel("data/04_feature/resultado.xlsx")
+    df_c = pd.read_excel("data/04_feature/result.xlsx")
     return df_elasticity, df_bp, df_c
 
 

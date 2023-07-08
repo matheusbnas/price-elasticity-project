@@ -30,7 +30,7 @@ pip install -r src/requirements.txt
 You can run your Kedro project with:
 
 ```
-kedro run
+streamlit run src/price_elasticity_project/nodes.py
 ```
 
 ## How to test your Kedro project

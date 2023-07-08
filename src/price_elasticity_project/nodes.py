@@ -14,7 +14,7 @@ st.set_page_config(layout="wide")
 
 
 def _load_data() -> pd.DataFrame:
-    df_raw = pd.read_csv("../../data/01_raw/df_ready.csv")
+    df_raw = pd.read_csv("data/01_raw/df_ready.csv")
     return df_raw
 
 
