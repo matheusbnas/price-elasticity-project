@@ -5,66 +5,33 @@
 ## Overview
 
 This pipeline:
-1. splits the data into training dataset and testing dataset using a configurable ratio found in `conf/base/parameters.yml`
-2. runs a simple 1-nearest neighbour model (`make_prediction` node) and makes prediction dataset
-3. reports the model accuracy on a test set (`report_accuracy` node)
+1. Loads data from a csv file (`_load_data` function).
+2. Drops unnecessary columns and renames the rest (`_drop_columns` function).
+3. Changes the data type of a column (`_change_dtypes` function).
+4. Filters the data and aggregates it (`_prepare_data` function).
+5. Calculates the price elasticity for each product (`_calculate_price_elasticity` function).
+6. Simulates the impact of price changes on demand and revenue (`simulate_elasticity` function).
+7. Generates a report based on the simulation results (`make_simulation_report` function).
+8. Displays the results in a Streamlit app (`run_simulation_tab` function).
 
 ## Pipeline inputs
 
-### `example_iris_data`
+### `df_ready.csv`
 
 |      |                    |
 | ---- | ------------------ |
-| Type | `pandas.CSVDataSet` |
-| Description | Example iris data containing columns |
-
-
-### `parameters`
-
-|      |                    |
-| ---- | ------------------ |
-| Type | `dict` |
-| Description | Project parameter dictionary that must contain the following keys: `train_fraction` (the ratio used to determine the train-test split), `random_state` (random generator to ensure train-test split is deterministic) and `target_column` (identify the target column in the dataset) |
-
+| Type | `.csv file` |
+| Description | Data containing product information |
 
 ## Pipeline intermediate outputs
 
-### `X_train`
-
-|      |                    |
-| ---- | ------------------ |
-| Type | `pandas.DataFrame` |
-| Description | DataFrame containing train set features |
-
-### `y_train`
-
-|      |                    |
-| ---- | ------------------ |
-| Type | `pandas.Series` |
-| Description | Series containing train set target. |
-
-### `X_test`
-
-|      |                    |
-| ---- | ------------------ |
-| Type | `pandas.DataFrame` |
-| Description | DataFrame containing test set features |
-
-### `y_test`
-
-|      |                    |
-| ---- | ------------------ |
-| Type | `pandas.Series` |
-| Description | Series containing test set target |
-
-### `y_pred`
-
-|      |                    |
-| ---- | ------------------ |
-| Type | `pandas.Series` |
-| Description | Predictions from the 1-nearest neighbour model |
-
+No explicit intermediate outputs are saved to disk.
 
 ## Pipeline outputs
 
-### `None`
+### `Streamlit App`
+
+|      |                    |
+| ---- | ------------------ |
+| Type | `Streamlit App` |
+| Description | An application that allows the user to interactively view the results of price elasticity calculations and price change simulations |
